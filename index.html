@@ -199,7 +199,7 @@ function tick(){
   let r=(endAt-now)/1000, advanced=0;
   while(r<=0){
     if(idx>=steps.length-1){remain=0;finish();return;}
-    idx++; r+=steps[idx].dur; advanced++;
+    idx++; r+=steps[idx].dur; endAt+=steps[idx].dur*1000; advanced++;
   }
   const before=Math.ceil(remain); remain=r; const after=Math.ceil(remain);
   if(advanced){
