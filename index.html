@@ -192,7 +192,14 @@ document.addEventListener('visibilitychange',()=>{
 });
 
 // Timing runs off the real clock (endAt), so time spent in another app is counted when you come back.
-let endAt=0;
+let endAt=0, raf=0;
+// The ring redraws every frame from the real clock; the 100ms tick only drives step changes, beeps and text
+function animateRing(){
+  if(!running){raf=0;return;}
+  const st=steps[idx], r=Math.min(st.dur,Math.max(0,(endAt-Date.now())/1000));
+  $('prog').style.strokeDashoffset=C*(1-r/st.dur);
+  raf=requestAnimationFrame(animateRing);
+}
 function tick(){
   if(!running)return;
   const now=Date.now();
@@ -219,7 +226,7 @@ function start(){
   initAudio();
   if(finished)reset();
   running=true;endAt=Date.now()+remain*1000;keepAwake(true);
-  clearInterval(timer);timer=setInterval(tick,100);render();
+  clearInterval(timer);timer=setInterval(tick,100);render();if(!raf)raf=requestAnimationFrame(animateRing);
 }
 function pause(){
   if(running)remain=Math.max(0,(endAt-Date.now())/1000);
