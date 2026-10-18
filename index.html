@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Stretch Timer</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600&display=swap">
+<style>
+:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body{margin:0}
+
+/* Layout: single centered column — current stretch photo, ring countdown, round transport controls, then a compact progress list */
+:root{
+  --bg:#f6f4f2; --surface:#ffffff; --fg:#1f1d1c; --muted:#7a726c; --line:#e6e0db;
+  --accent:#e8572a; --accent-soft:#fdebe4; --rest:#3b7d8c; --rest-soft:#e3f0f2;
+  --display:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;
+  --body:"Barlow",system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#171514; --surface:#221f1d; --fg:#f2eeeb; --muted:#a39a94; --line:#37322f;
+  --accent:#f26a3f; --accent-soft:#3a231b; --rest:#6fb3c2; --rest-soft:#1b2e32; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#171514; --surface:#221f1d; --fg:#f2eeeb; --muted:#a39a94; --line:#37322f;
+  --accent:#f26a3f; --accent-soft:#3a231b; --rest:#6fb3c2; --rest-soft:#1b2e32; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:16px;line-height:1.45}
+.wrap{max-width:440px;margin:0 auto;padding-block:24px 40px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  display:flex;flex-direction:column;align-items:center;gap:22px;text-align:center}
+header{display:flex;flex-direction:column;align-items:center;gap:2px}
+h1{font-family:var(--display);font-weight:700;font-size:1.5rem;letter-spacing:.12em;text-transform:uppercase;margin:0}
+.meta{color:var(--muted);font-size:.9rem;font-variant-numeric:tabular-nums}
+
+.stage{width:100%;background:var(--surface);border:1px solid var(--line);border-radius:22px;padding:22px 20px 20px;display:flex;flex-direction:column;align-items:center;gap:16px}
+.photo{width:100%;aspect-ratio:16/9;max-width:100%;border-radius:14px;overflow:hidden;background:var(--line);position:relative}
+.photo img{width:100%;height:100%;object-fit:cover;display:block}
+.who{display:flex;flex-direction:column;align-items:center;gap:2px}
+.label{font-size:.72rem;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.name{font-family:var(--display);font-weight:700;font-size:2rem;line-height:1.05;text-wrap:balance}
+.detail{color:var(--muted);font-size:.95rem}
+
+.ringbox{position:relative;width:min(230px,64vw);aspect-ratio:1;max-width:100%}
+.ringbox svg{width:100%;height:100%;transform:rotate(-90deg)}
+.track{fill:none;stroke:var(--line);stroke-width:8}
+.prog{fill:none;stroke:var(--accent);stroke-width:8;stroke-linecap:round;transition:stroke .3s}
+.stage.rest .prog{stroke:var(--rest)}
+.center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px}
+.phase{font-family:var(--display);font-weight:600;font-size:.95rem;letter-spacing:.16em;text-transform:uppercase;padding:2px 12px;border-radius:99px;background:var(--accent-soft);color:var(--accent)}
+.stage.rest .phase{background:var(--rest-soft);color:var(--rest)}
+.count{font-family:var(--display);font-weight:700;font-size:5.4rem;line-height:.95;font-variant-numeric:tabular-nums}
+.unit{font-size:.4em;color:var(--muted);margin-left:2px}
+
+.controls{display:flex;align-items:center;justify-content:center;gap:18px}
+button{font:inherit;cursor:pointer;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:50%;width:52px;height:52px;display:grid;place-items:center;padding:0}
+button svg{width:22px;height:22px;fill:currentColor}
+button:hover{border-color:var(--muted)}
+button:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
+.play{width:78px;height:78px;background:var(--accent);border-color:var(--accent);color:#fff;box-shadow:0 6px 18px -8px var(--accent)}
+.play svg{width:32px;height:32px}
+.play:hover{border-color:var(--accent);filter:brightness(1.05)}
+.toggle{display:flex;gap:8px;align-items:center;justify-content:center;color:var(--muted);font-size:.9rem;cursor:pointer}
+.toggle input{accent-color:var(--accent);width:17px;height:17px}
+
+.progress{width:100%;display:flex;flex-direction:column;gap:4px}
+.row{display:grid;grid-template-columns:1fr auto;align-items:center;gap:12px;padding:10px 16px;border-radius:12px;text-align:left}
+.row .t{font-weight:600}
+.row .s{color:var(--muted);font-size:.85rem;font-weight:400;margin-left:6px}
+.row.now{background:var(--surface);box-shadow:inset 0 0 0 1.5px var(--accent)}
+.row.done .t{color:var(--muted)}
+.dots{display:flex;gap:6px;align-items:center}
+.dot{width:11px;height:11px;border-radius:50%;border:1.5px solid var(--line)}
+.dot.sep{margin-left:6px}
+.dot.done{background:var(--accent);border-color:var(--accent)}
+.dot.now{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.note{color:var(--muted);font-size:.85rem;max-width:36ch;margin:0}
+.credit a{color:var(--accent);font-weight:600}
+@media (prefers-reduced-motion:reduce){.prog{transition:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Stretch Timer</h1>
+    <span class="meta" id="total"></span>
+  </header>
+
+  <section class="stage" id="stage" aria-live="polite">
+    <div class="who">
+      <div class="label" id="lbl">First up</div>
+      <div class="name" id="name">Pancake</div>
+      <div class="detail" id="detail">Rep 1 of 2</div>
+    </div>
+    <div class="ringbox">
+      <svg viewBox="0 0 120 120" aria-hidden="true">
+        <circle class="track" cx="60" cy="60" r="52"/>
+        <circle class="prog" id="prog" cx="60" cy="60" r="52"/>
+      </svg>
+      <div class="center">
+        <span class="phase" id="phase">Ready</span>
+        <span class="count" id="count">5<span class="unit">s</span></span>
+      </div>
+    </div>
+    <div class="controls">
+      <button id="reset" aria-label="Restart"><svg viewBox="0 0 24 24"><path d="M12 5V2L7 6l5 4V7a5 5 0 1 1-5 5H5a7 7 0 1 0 7-7z"/></svg></button>
+      <button id="back" aria-label="Previous stretch"><svg viewBox="0 0 24 24"><path d="M6 6h2v12H6zM9.5 12 18 6v12z"/></svg></button>
+      <button class="play" id="go" aria-label="Start"><svg viewBox="0 0 24 24" id="goicon"><path d="M8 5v14l11-7z"/></svg></button>
+      <button id="skip" aria-label="Next stretch"><svg viewBox="0 0 24 24"><path d="M16 6h2v12h-2zM6 18V6l8.5 6z"/></svg></button>
+    </div>
+    <label class="toggle"><input type="checkbox" id="snd" checked> Beeps</label>
+  </section>
+
+  <section class="progress" id="seq" aria-label="Progress"></section>
+  <p class="note">30s hold, 10s break between holds, 5s to get ready at the start. The screen stays on while the timer runs.</p>
+</div>
+
+<script>
+const HOLD=30, REST=10, PREP=5;
+const STRETCH=[
+  {k:'pancake',name:'Pancake',sides:null},
+  {k:'fig4',name:'Figure 4',sides:['Left','Right']},
+  {k:'hip',name:'Hip Flexor',sides:['Left','Right']},
+  {k:'chest',name:'Chest Stretch',sides:null},
+  {k:'lat',name:'Lat Stretch',sides:null},
+];
+// Both reps on one side, then the other side (L,L,R,R)
+const holds=[];
+STRETCH.forEach((s,si)=>{(s.sides||[null]).forEach(side=>{for(let r=1;r<=2;r++)holds.push({...s,si,rep:r,side});});});
+const steps=[{type:'prep',dur:PREP,h:0}];
+holds.forEach((h,i)=>{steps.push({type:'hold',dur:HOLD,h:i});if(i<holds.length-1)steps.push({type:'rest',dur:REST,h:i+1});});
+const totalSec=holds.length*HOLD+(holds.length-1)*REST;
+const $=id=>document.getElementById(id);
+$('total').textContent=`5 stretches · ${holds.length} holds · ${Math.floor(totalSec/60)}:${String(totalSec%60).padStart(2,'0')} min`;
+
+const C=2*Math.PI*52; $('prog').style.strokeDasharray=C;
+let idx=0, remain=steps[0].dur, running=false, timer=null, wake=null, finished=false, actx=null;
+const ICON_PLAY='<path d="M8 5v14l11-7z"/>', ICON_PAUSE='<path d="M7 5h4v14H7zM13 5h4v14h-4z"/>', ICON_AGAIN='<path d="M12 5V2L7 6l5 4V7a5 5 0 1 1-5 5H5a7 7 0 1 0 7-7z"/>';
+
+function desc(h){const p=[];if(h.side)p.push(h.side+' side');p.push(`Rep ${h.rep} of 2`);return p.join(' · ');}
+
+// progress rows: one per stretch, one dot per hold
+const seqEl=$('seq'); const rows=[]; const dots=[];
+STRETCH.forEach((s,si)=>{
+  const row=document.createElement('div');row.className='row';
+  row.innerHTML=`<span class="t">${s.name}${s.sides?'<span class="s">L / R</span>':''}</span><span class="dots"></span>`;
+  const dwrap=row.querySelector('.dots');
+  holds.forEach((h,i)=>{if(h.si!==si)return;const d=document.createElement('span');d.className='dot'+(h.side==='Right'&&h.rep===1?' sep':'');d.title=desc(h);dwrap.appendChild(d);dots[i]=d;});
+  seqEl.appendChild(row);rows.push(row);
+});
+
+function render(){
+  const st=steps[idx], h=holds[st.h];
+  $('stage').classList.toggle('rest',st.type!=='hold');
+  if(finished){
+    $('phase').textContent='Done';$('count').innerHTML='✓';
+    $('lbl').textContent='Session complete';$('name').textContent='Nice work';$('detail').textContent='Tick today on your sheet';
+    $('prog').style.strokeDashoffset=0;
+  } else {
+    $('phase').textContent=st.type==='hold'?'Hold':st.type==='rest'?'Break':(running?'Get ready':'Ready');
+    $('count').innerHTML=`${Math.ceil(remain)}<span class="unit">s</span>`;
+    $('lbl').textContent=st.type==='hold'?'Now':(idx===0?'First up':'Up next');
+    $('name').textContent=h.name;$('detail').textContent=desc(h);
+    $('prog').style.strokeDashoffset=C*(1-remain/st.dur);
+  }
+  $('goicon').innerHTML=finished?ICON_AGAIN:running?ICON_PAUSE:ICON_PLAY;
+  $('go').setAttribute('aria-label',finished?'Start again':running?'Pause':'Start');
+  const cur=finished?holds.length:st.h;
+  dots.forEach((d,i)=>{d.classList.toggle('done',i<cur);d.classList.toggle('now',!finished&&i===cur);});
+  rows.forEach((r,si)=>{
+    const mine=holds.map((x,i)=>x.si===si?i:-1).filter(i=>i>=0);
+    r.classList.toggle('done',mine.every(i=>i<cur));
+    r.classList.toggle('now',!finished&&holds[cur]&&holds[cur].si===si);
+  });
+}
+
+function beep(freq=880,len=.12,vol=.25){
+  if(!$('snd').checked||!actx)return;
+  try{const o=actx.createOscillator(),g=actx.createGain();o.frequency.value=freq;o.type='sine';
+  g.gain.setValueAtTime(vol,actx.currentTime);g.gain.exponentialRampToValueAtTime(.001,actx.currentTime+len);
+  o.connect(g).connect(actx.destination);o.start();o.stop(actx.currentTime+len);}catch(e){}
+}
+function announce(){const st=steps[idx];if(st.type==='hold')beep(1046,.35,.3);else if(st.type==='rest')beep(523,.35,.3);}
+async function keepAwake(on){
+  try{
+    if(on&&'wakeLock' in navigator&&!wake){wake=await navigator.wakeLock.request('screen');wake.addEventListener('release',()=>wake=null);}
+    if(!on&&wake){await wake.release();wake=null;}
+  }catch(e){}
+}
+document.addEventListener('visibilitychange',()=>{
+  if(document.visibilityState==='visible'&&running){keepAwake(true);if(actx&&actx.state!=='running')actx.resume().catch(()=>{});tick();}
+});
+
+// Timing runs off the real clock (endAt), so time spent in another app is counted when you come back.
+let endAt=0;
+function tick(){
+  if(!running)return;
+  const now=Date.now();
+  let r=(endAt-now)/1000, advanced=0;
+  while(r<=0){
+    if(idx>=steps.length-1){remain=0;finish();return;}
+    idx++; r+=steps[idx].dur; advanced++;
+  }
+  const before=Math.ceil(remain); remain=r; const after=Math.ceil(remain);
+  if(advanced){
+    // only sound the change if it just happened, not when catching up after a while away
+    if(advanced===1&&steps[idx].dur-r<1.5)announce();
+  } else if(after!==before&&after<=3&&after>0)beep(660,.1,.2);
+  render();
+}
+function finish(){running=false;clearInterval(timer);finished=true;keepAwake(false);beep(1318,.6,.3);render();}
+function initAudio(){
+  // Let beeps mix with music from other apps (Safari / iOS 17+); ignored elsewhere
+  try{if(navigator.audioSession)navigator.audioSession.type='ambient';}catch(e){}
+  if(!actx){try{actx=new (window.AudioContext||window.webkitAudioContext)();}catch(e){}}
+  if(actx&&actx.state==='suspended')actx.resume().catch(()=>{});
+}
+function start(){
+  initAudio();
+  if(finished)reset();
+  running=true;endAt=Date.now()+remain*1000;keepAwake(true);
+  clearInterval(timer);timer=setInterval(tick,100);render();
+}
+function pause(){
+  if(running)remain=Math.max(0,(endAt-Date.now())/1000);
+  running=false;clearInterval(timer);keepAwake(false);render();
+}
+function jump(d){
+  finished=false;
+  let target=idx+d;
+  if(d>0){while(target<steps.length&&steps[target].type!=='hold')target++;}
+  else{while(target>0&&steps[target].type!=='hold')target--;}
+  if(target>=steps.length){finish();return;}
+  idx=Math.max(0,target);remain=steps[idx].dur;
+  if(running){endAt=Date.now()+remain*1000;announce();}
+  render();
+}
+function reset(){pause();idx=0;remain=steps[0].dur;finished=false;render();}
+
+$('go').onclick=()=>running?pause():start();
+$('skip').onclick=()=>jump(1);
+$('back').onclick=()=>jump(-1);
+$('reset').onclick=reset;
+document.addEventListener('keydown',e=>{if(e.code==='Space'&&e.target.tagName!=='BUTTON'&&e.target.tagName!=='INPUT'){e.preventDefault();$('go').click();}});
+try{const s=localStorage.getItem('snd');if(s!==null)$('snd').checked=s==='1';}catch(e){}
+$('snd').onchange=e=>{try{localStorage.setItem('snd',e.target.checked?'1':'0')}catch(_){}}
+render();
+</script>
+</body>
+</html>
