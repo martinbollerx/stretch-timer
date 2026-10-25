@@ -61,6 +61,7 @@ button:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
 .play svg{width:32px;height:32px}
 .play:hover{border-color:var(--accent);filter:brightness(1.05)}
 .toggle{display:flex;gap:8px;align-items:center;justify-content:center;color:var(--muted);font-size:.9rem;cursor:pointer}
+.toggles{display:flex;gap:22px;justify-content:center;flex-wrap:wrap}
 .toggle input{accent-color:var(--accent);width:17px;height:17px}
 
 .progress{width:100%;display:flex;flex-direction:column;gap:4px}
@@ -108,11 +109,14 @@ button:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
       <button class="play" id="go" aria-label="Start"><svg viewBox="0 0 24 24" id="goicon"><path d="M8 5v14l11-7z"/></svg></button>
       <button id="skip" aria-label="Next stretch"><svg viewBox="0 0 24 24"><path d="M16 6h2v12h-2zM6 18V6l8.5 6z"/></svg></button>
     </div>
-    <label class="toggle"><input type="checkbox" id="snd" checked> Beeps</label>
+    <div class="toggles">
+      <label class="toggle"><input type="checkbox" id="snd" checked> Beeps</label>
+      <label class="toggle"><input type="checkbox" id="mus" checked> Music</label>
+    </div>
   </section>
 
   <section class="progress" id="seq" aria-label="Progress"></section>
-  <p class="note">30s hold, 10s break between holds, 5s to get ready at the start. The screen stays on while the timer runs.</p>
+  <p class="note">30s hold, 10s break between holds, 5s to get ready at the start. Soft ambient music plays while the timer runs. The screen stays on while the timer runs.</p>
 </div>
 
 <script>
@@ -180,6 +184,60 @@ function beep(freq=880,len=.12,vol=.25){
   g.gain.setValueAtTime(vol,actx.currentTime);g.gain.exponentialRampToValueAtTime(.001,actx.currentTime+len);
   o.connect(g).connect(actx.destination);o.start();o.stop(actx.currentTime+len);}catch(e){}
 }
+// Generated ambient music: slow, warm pad chords with a few soft bell notes, no samples needed.
+const CHORDS=[[48,55,64,71],[45,52,60,67],[41,48,57,64],[43,50,59,62]]; // Cmaj7, Am7, Fmaj7, G6/9
+const BELLS=[72,74,76,79,81,84]; // C major pentatonic
+const CHORD_LEN=10, AHEAD=45;
+let mIn=null, music=null;
+const mtof=m=>440*Math.pow(2,(m-69)/12);
+function musicChain(){
+  if(mIn)return mIn;
+  mIn=actx.createGain();
+  const lp=actx.createBiquadFilter();lp.type='lowpass';lp.frequency.value=1100;lp.Q.value=.3;
+  const len=actx.sampleRate*4.5, buf=actx.createBuffer(2,len,actx.sampleRate);
+  for(let c=0;c<2;c++){const d=buf.getChannelData(c);for(let i=0;i<len;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/len,2.5);}
+  const conv=actx.createConvolver();conv.buffer=buf;
+  const dry=actx.createGain(),wet=actx.createGain();dry.gain.value=.55;wet.gain.value=.7;
+  mIn.connect(lp);lp.connect(dry).connect(actx.destination);lp.connect(conv);conv.connect(wet).connect(actx.destination);
+  return mIn;
+}
+function voice(out,freq,t,dur,vol,type,atk,rel){
+  const o=actx.createOscillator(),g=actx.createGain();
+  o.type=type;o.frequency.value=freq;o.detune.value=(Math.random()-.5)*12;
+  g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(vol,t+atk);
+  g.gain.setValueAtTime(vol,t+dur-rel);g.gain.linearRampToValueAtTime(0,t+dur);
+  o.connect(g).connect(out);o.start(t);o.stop(t+dur+.1);
+}
+function bell(out,freq,t){
+  const o=actx.createOscillator(),g=actx.createGain();
+  o.type='sine';o.frequency.value=freq;
+  g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(.05,t+.03);g.gain.exponentialRampToValueAtTime(.0005,t+5);
+  o.connect(g).connect(out);o.start(t);o.stop(t+5.1);
+}
+function scheduleMusic(m){
+  while(m.next<actx.currentTime+AHEAD){
+    const t=m.next, ch=CHORDS[m.i%CHORDS.length], dur=CHORD_LEN+4;
+    ch.forEach((n,k)=>{
+      voice(m.out,mtof(n),t,dur,.05,'sine',4,5);
+      voice(m.out,mtof(n+(k%2?0:12)),t,dur,.018,'triangle',4,5);
+    });
+    for(let b=t+2+Math.random()*2;b<t+CHORD_LEN-2;b+=3+Math.random()*4)bell(m.out,mtof(BELLS[Math.floor(Math.random()*BELLS.length)]),b);
+    m.next+=CHORD_LEN;m.i++;
+  }
+}
+function musicStart(){
+  if(!actx||!$('mus').checked||music)return;
+  const out=actx.createGain();out.gain.setValueAtTime(0,actx.currentTime);out.gain.linearRampToValueAtTime(.8,actx.currentTime+3);
+  out.connect(musicChain());
+  const m=music={out,i:0,next:actx.currentTime+.1,timer:0};
+  scheduleMusic(m);m.timer=setInterval(()=>scheduleMusic(m),1000);
+}
+function musicStop(){
+  if(!music)return;
+  const m=music;music=null;clearInterval(m.timer);
+  try{m.out.gain.cancelScheduledValues(actx.currentTime);m.out.gain.setValueAtTime(m.out.gain.value,actx.currentTime);m.out.gain.linearRampToValueAtTime(0,actx.currentTime+1.5);}catch(e){}
+  setTimeout(()=>m.out.disconnect(),1700);
+}
 function announce(){const st=steps[idx];if(st.type==='hold')beep(1046,.35,.3);else if(st.type==='rest')beep(523,.35,.3);}
 async function keepAwake(on){
   try{
@@ -215,7 +273,7 @@ function tick(){
   } else if(after!==before&&after<=3&&after>0)beep(660,.1,.2);
   render();
 }
-function finish(){running=false;clearInterval(timer);finished=true;keepAwake(false);beep(1318,.6,.3);render();}
+function finish(){running=false;clearInterval(timer);musicStop();finished=true;keepAwake(false);beep(1318,.6,.3);render();}
 function initAudio(){
   // Let beeps mix with music from other apps (Safari / iOS 17+); ignored elsewhere
   try{if(navigator.audioSession)navigator.audioSession.type='ambient';}catch(e){}
@@ -225,12 +283,12 @@ function initAudio(){
 function start(){
   initAudio();
   if(finished)reset();
-  running=true;endAt=Date.now()+remain*1000;keepAwake(true);
+  running=true;endAt=Date.now()+remain*1000;keepAwake(true);musicStart();
   clearInterval(timer);timer=setInterval(tick,100);render();if(!raf)raf=requestAnimationFrame(animateRing);
 }
 function pause(){
   if(running)remain=Math.max(0,(endAt-Date.now())/1000);
-  running=false;clearInterval(timer);keepAwake(false);render();
+  running=false;clearInterval(timer);keepAwake(false);musicStop();render();
 }
 function jump(d){
   finished=false;
@@ -249,7 +307,8 @@ $('skip').onclick=()=>jump(1);
 $('back').onclick=()=>jump(-1);
 $('reset').onclick=reset;
 document.addEventListener('keydown',e=>{if(e.code==='Space'&&e.target.tagName!=='BUTTON'&&e.target.tagName!=='INPUT'){e.preventDefault();$('go').click();}});
-try{const s=localStorage.getItem('snd');if(s!==null)$('snd').checked=s==='1';}catch(e){}
+try{const s=localStorage.getItem('snd');if(s!==null)$('snd').checked=s==='1';const u=localStorage.getItem('mus');if(u!==null)$('mus').checked=u==='1';}catch(e){}
+$('mus').onchange=e=>{try{localStorage.setItem('mus',e.target.checked?'1':'0')}catch(_){}if(running){e.target.checked?musicStart():musicStop();}};
 $('snd').onchange=e=>{try{localStorage.setItem('snd',e.target.checked?'1':'0')}catch(_){}}
 render();
 </script>
