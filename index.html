@@ -186,34 +186,43 @@ function beep(freq=880,len=.12,vol=.25){
 }
 // Generated ambient music: soft, sparse plucked notes over slow chord changes. No low drone, no samples.
 const CHORDS=[[60,64,67,71,72,76],[57,60,64,67,69,72],[60,64,65,69,72,77],[59,62,67,69,71,74]]; // Cmaj7, Am7, Fmaj7, G6/9
-const CHORD_LEN=8, AHEAD=45;
+const PADS=[[64,67,71],[60,64,69],[60,65,69],[62,67,71]]; // soft mid-register pad under each chord
+const CHORD_LEN=10, AHEAD=45;
 let mIn=null, music=null;
 const mtof=m=>440*Math.pow(2,(m-69)/12);
 function musicChain(){
   if(mIn)return mIn;
   mIn=actx.createGain();
-  const lp=actx.createBiquadFilter();lp.type='lowpass';lp.frequency.value=2200;lp.Q.value=.3;
-  const len=actx.sampleRate*2, buf=actx.createBuffer(2,len,actx.sampleRate);
+  const lp=actx.createBiquadFilter();lp.type='lowpass';lp.frequency.value=1600;lp.Q.value=.3;
+  const len=actx.sampleRate*3, buf=actx.createBuffer(2,len,actx.sampleRate);
   for(let c=0;c<2;c++){const d=buf.getChannelData(c);for(let i=0;i<len;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/len,3);}
   const conv=actx.createConvolver();conv.buffer=buf;
-  const dry=actx.createGain(),wet=actx.createGain();dry.gain.value=.8;wet.gain.value=.3;
+  const dry=actx.createGain(),wet=actx.createGain();dry.gain.value=.8;wet.gain.value=.45;
   mIn.connect(lp);lp.connect(dry).connect(actx.destination);lp.connect(conv);conv.connect(wet).connect(actx.destination);
   return mIn;
 }
 function pluck(out,freq,t,vol){
   const g=actx.createGain();
-  g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(vol,t+.015);g.gain.exponentialRampToValueAtTime(.0005,t+2.6);
+  g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(vol,t+.03);g.gain.exponentialRampToValueAtTime(.0005,t+3.6);
   g.connect(out);
   [[1,1],[2,.12]].forEach(([mul,a])=>{
     const o=actx.createOscillator(),og=actx.createGain();
     o.type='sine';o.frequency.value=freq*mul;og.gain.value=a;
-    o.connect(og).connect(g);o.start(t);o.stop(t+2.7);
+    o.connect(og).connect(g);o.start(t);o.stop(t+3.7);
   });
+}
+function pad(out,freq,t,dur,vol){
+  const o=actx.createOscillator(),g=actx.createGain();
+  o.type='sine';o.frequency.value=freq;
+  g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(vol,t+3);
+  g.gain.setValueAtTime(vol,t+dur-3);g.gain.linearRampToValueAtTime(0,t+dur);
+  o.connect(g).connect(out);o.start(t);o.stop(t+dur+.1);
 }
 function scheduleMusic(m){
   while(m.next<actx.currentTime+AHEAD){
     const ch=CHORDS[m.i%CHORDS.length];
-    for(let t=m.next+Math.random()*.6;t<m.next+CHORD_LEN-1;t+=1.4+Math.random()*1.8){
+    PADS[m.i%PADS.length].forEach(n=>pad(m.out,mtof(n),m.next,CHORD_LEN+3,.03));
+    for(let t=m.next+Math.random()*.6;t<m.next+CHORD_LEN-1;t+=2+Math.random()*2.2){
       if(Math.random()<.2)continue;
       pluck(m.out,mtof(ch[Math.floor(Math.random()*ch.length)]),t,.07+Math.random()*.03);
     }
