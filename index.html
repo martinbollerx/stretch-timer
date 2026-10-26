@@ -123,12 +123,12 @@ button:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
 const HOLD=30, REST=10, PREP=5;
 const STRETCH=[
   {k:'pancake',name:'Pancake',sides:null},
-  {k:'fig4',name:'Figure 4',sides:['Left','Right']},
-  {k:'hip',name:'Hip Flexor',sides:['Left','Right']},
+  {k:'fig4',name:'Figure 4',sides:['Right','Left']},
+  {k:'hip',name:'Hip Flexor',sides:['Right','Left']},
   {k:'chest',name:'Chest Stretch',sides:null},
   {k:'lat',name:'Lat Stretch',sides:null},
 ];
-// Both reps on one side, then the other side (L,L,R,R)
+// Both reps on one side, then the other side (R,R,L,L)
 const holds=[];
 STRETCH.forEach((s,si)=>{(s.sides||[null]).forEach(side=>{for(let r=1;r<=2;r++)holds.push({...s,si,rep:r,side});});});
 const steps=[{type:'prep',dur:PREP,h:0}];
@@ -147,9 +147,9 @@ function desc(h){const p=[];if(h.side)p.push(h.side+' side');p.push(`Rep ${h.rep
 const seqEl=$('seq'); const rows=[]; const dots=[];
 STRETCH.forEach((s,si)=>{
   const row=document.createElement('div');row.className='row';
-  row.innerHTML=`<span class="t">${s.name}${s.sides?'<span class="s">L / R</span>':''}</span><span class="dots"></span>`;
+  row.innerHTML=`<span class="t">${s.name}${s.sides?'<span class="s">R / L</span>':''}</span><span class="dots"></span>`;
   const dwrap=row.querySelector('.dots');
-  holds.forEach((h,i)=>{if(h.si!==si)return;const d=document.createElement('span');d.className='dot'+(h.side==='Right'&&h.rep===1?' sep':'');d.title=desc(h);dwrap.appendChild(d);dots[i]=d;});
+  holds.forEach((h,i)=>{if(h.si!==si)return;const d=document.createElement('span');d.className='dot'+(h.side==='Left'&&h.rep===1?' sep':'');d.title=desc(h);dwrap.appendChild(d);dots[i]=d;});
   seqEl.appendChild(row);rows.push(row);
 });
 
