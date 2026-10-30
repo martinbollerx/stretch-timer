@@ -76,7 +76,9 @@ button:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
 .dot.done{background:var(--accent);border-color:var(--accent)}
 .dot.now{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
 .note{color:var(--muted);font-size:.85rem;max-width:36ch;margin:0}
-.credit a{color:var(--accent);font-weight:600}
+.credit{font-size:.78rem;opacity:.8}
+.credit a{color:inherit;text-decoration:underline;text-decoration-color:var(--line);text-underline-offset:3px}
+.credit a:hover{text-decoration-color:var(--muted)}
 @media (prefers-reduced-motion:reduce){.prog{transition:none}}
 </style>
 </head>
@@ -116,7 +118,8 @@ button:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
   </section>
 
   <section class="progress" id="seq" aria-label="Progress"></section>
-  <p class="note">30s hold, 10s break between holds, 5s to get ready at the start. Soft piano music (<a href="https://pixabay.com/music/" target="_blank" rel="noopener">Peaceful Garden by HarumachiMusic</a>) plays while the timer runs. The screen stays on while the timer runs.</p>
+  <p class="note">30s hold, 10s break between holds, 5s to get ready at the start. Soft piano music plays while the timer runs. The screen stays on while the timer runs.</p>
+  <p class="note credit">Music by <a href="https://pixabay.com/users/harumachimusic-13470593/?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=112199" target="_blank" rel="noopener">Noru</a> from <a href="https://pixabay.com//?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=112199" target="_blank" rel="noopener">Pixabay</a></p>
 </div>
 
 <script>
@@ -194,7 +197,7 @@ function beep(freq=880,len=.12,vol=.25){
   g.gain.setValueAtTime(vol,actx.currentTime);g.gain.exponentialRampToValueAtTime(.001,actx.currentTime+len);
   o.connect(g).connect(beepOut());o.start();o.stop(actx.currentTime+len);}catch(e){}
 }
-// Background music: "Peaceful Garden" by HarumachiMusic (Pixabay), looped for the whole session
+// Background music: "Peaceful Garden" by Noru (Pixabay), looped for the whole session
 let music=null;
 function musicStart(){
   if(!$('mus').checked)return;
