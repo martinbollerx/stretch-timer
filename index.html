@@ -178,9 +178,9 @@ function render(){
   });
 }
 
-function beep(freq=880,len=.12,vol=.25){
+function beep(freq=880,len=.15,vol=.6){
   if(!$('snd').checked||!actx)return;
-  try{const o=actx.createOscillator(),g=actx.createGain();o.frequency.value=freq;o.type='sine';
+  try{const o=actx.createOscillator(),g=actx.createGain();o.frequency.value=freq;o.type='triangle';
   g.gain.setValueAtTime(vol,actx.currentTime);g.gain.exponentialRampToValueAtTime(.001,actx.currentTime+len);
   o.connect(g).connect(actx.destination);o.start();o.stop(actx.currentTime+len);}catch(e){}
 }
@@ -239,7 +239,7 @@ function musicStop(){
   if(!music)return;
   const m=music;music=null;clearInterval(m.timer);m.out.disconnect();
 }
-function announce(){const st=steps[idx];if(st.type==='hold')beep(1046,.35,.3);else if(st.type==='rest')beep(523,.35,.3);}
+function announce(){const st=steps[idx];if(st.type==='hold')beep(1046,.45,.85);else if(st.type==='rest')beep(523,.45,.85);}
 async function keepAwake(on){
   try{
     if(on&&'wakeLock' in navigator&&!wake){wake=await navigator.wakeLock.request('screen');wake.addEventListener('release',()=>wake=null);}
@@ -271,10 +271,10 @@ function tick(){
   if(advanced){
     // only sound the change if it just happened, not when catching up after a while away
     if(advanced===1&&steps[idx].dur-r<1.5)announce();
-  } else if(after!==before&&after<=3&&after>0)beep(660,.1,.2);
+  } else if(after!==before&&after<=3&&after>0)beep(660,.15,.6);
   render();
 }
-function finish(){running=false;clearInterval(timer);musicStop();finished=true;keepAwake(false);beep(1318,.6,.3);render();}
+function finish(){running=false;clearInterval(timer);musicStop();finished=true;keepAwake(false);beep(1318,.8,.85);render();}
 function initAudio(){
   // Let beeps mix with music from other apps (Safari / iOS 17+); ignored elsewhere
   try{if(navigator.audioSession)navigator.audioSession.type='ambient';}catch(e){}
