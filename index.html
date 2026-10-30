@@ -178,21 +178,12 @@ function render(){
   });
 }
 
-// Clean bell-like tones: fast soft attack, smooth decay, a little 2nd/3rd harmonic for clarity
-function beep(freq=880,len=.15,vol=.6,delay=0){
+function beep(freq=880,len=.12,vol=.25){
   if(!$('snd').checked||!actx)return;
-  try{
-    const t=actx.currentTime+delay, g=actx.createGain();
-    g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(vol,t+.006);g.gain.exponentialRampToValueAtTime(.001,t+len);
-    g.connect(actx.destination);
-    [[1,1],[2,.22],[3,.06]].forEach(([m,a])=>{
-      const o=actx.createOscillator(),og=actx.createGain();
-      o.type='sine';o.frequency.value=freq*m;og.gain.value=a;
-      o.connect(og).connect(g);o.start(t);o.stop(t+len+.02);
-    });
-  }catch(e){}
+  try{const o=actx.createOscillator(),g=actx.createGain();o.frequency.value=freq;o.type='sine';
+  g.gain.setValueAtTime(vol,actx.currentTime);g.gain.exponentialRampToValueAtTime(.001,actx.currentTime+len);
+  o.connect(g).connect(actx.destination);o.start();o.stop(actx.currentTime+len);}catch(e){}
 }
-const chime=(notes,gap,len,vol)=>notes.forEach((f,i)=>beep(f,len,vol,i*gap));
 // Generated ambient music: soft, sparse plucked notes over slow chord changes. No low drone, no samples.
 const CHORDS=[[60,64,67,71,72,76],[57,60,64,67,69,72],[60,64,65,69,72,77],[59,62,67,69,71,74]]; // Cmaj7, Am7, Fmaj7, G6/9
 const PADS=[[64,67,71],[60,64,69],[60,65,69],[62,67,71]]; // soft mid-register pad under each chord
@@ -248,7 +239,7 @@ function musicStop(){
   if(!music)return;
   const m=music;music=null;clearInterval(m.timer);m.out.disconnect();
 }
-function announce(){const st=steps[idx];if(st.type==='hold')chime([784,1175],.14,.7,.7);else if(st.type==='rest')chime([1175,784],.14,.7,.6);}
+function announce(){const st=steps[idx];if(st.type==='hold')beep(1046,.35,.85);else if(st.type==='rest')beep(523,.35,.85);}
 async function keepAwake(on){
   try{
     if(on&&'wakeLock' in navigator&&!wake){wake=await navigator.wakeLock.request('screen');wake.addEventListener('release',()=>wake=null);}
@@ -280,10 +271,10 @@ function tick(){
   if(advanced){
     // only sound the change if it just happened, not when catching up after a while away
     if(advanced===1&&steps[idx].dur-r<1.5)announce();
-  } else if(after!==before&&after<=3&&after>0)beep(880,.18,.65);
+  } else if(after!==before&&after<=3&&after>0)beep(660,.1,.6);
   render();
 }
-function finish(){running=false;clearInterval(timer);musicStop();finished=true;keepAwake(false);chime([784,988,1175,1568],.16,1.1,.7);render();}
+function finish(){running=false;clearInterval(timer);musicStop();finished=true;keepAwake(false);beep(1318,.6,.85);render();}
 function initAudio(){
   // Let beeps mix with music from other apps (Safari / iOS 17+); ignored elsewhere
   try{if(navigator.audioSession)navigator.audioSession.type='ambient';}catch(e){}
