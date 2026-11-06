@@ -55,7 +55,7 @@ h1{font-family:var(--display);font-weight:700;font-size:1.5rem;letter-spacing:.1
 
 .controls{display:flex;align-items:center;justify-content:center;gap:18px}
 button{font:inherit;cursor:pointer;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:50%;width:52px;height:52px;display:grid;place-items:center;padding:0}
-button svg{width:22px;height:22px;fill:currentColor}
+button svg{width:22px;height:22px;fill:currentColor;pointer-events:none}
 button:hover{border-color:var(--muted)}
 button:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
 .play{width:78px;height:78px;background:var(--accent);border-color:var(--accent);color:#fff;box-shadow:0 6px 18px -8px var(--accent)}
@@ -301,6 +301,13 @@ document.addEventListener('keydown',e=>{if(e.code==='Space'&&e.target.tagName!==
 try{const s=localStorage.getItem('snd');if(s!==null)$('snd').checked=s==='1';const u=localStorage.getItem('mus');if(u!==null)$('mus').checked=u==='1';}catch(e){}
 $('mus').onchange=e=>{try{localStorage.setItem('mus',e.target.checked?'1':'0')}catch(_){}if(!e.target.checked)musicStop();else if(running)musicStart();};
 $('snd').onchange=e=>{try{localStorage.setItem('snd',e.target.checked?'1':'0')}catch(_){}}
+// iOS can still zoom on a quick second tap (the play icon is swapped between taps), so handle fast repeat taps ourselves
+let lastTap=0;
+document.addEventListener('touchend',e=>{
+  const now=Date.now(), el=e.target.closest&&e.target.closest('button,label');
+  if(el&&now-lastTap<350){e.preventDefault();el.click();}
+  lastTap=now;
+},{passive:false});
 render();
 </script>
 </body>
