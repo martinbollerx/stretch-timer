@@ -204,13 +204,30 @@ function beep(freq=880,len=.12,vol=.25){
   o.connect(g).connect(beepOut());o.start();o.stop(actx.currentTime+len);}catch(e){}
 }
 // Background music: "Peaceful Garden" by Noru (Pixabay), looped for the whole session
-let music=null;
+let music=null, fadeTimer=null;
+const MUSIC_VOL=.7;
+function cancelFade(){clearTimeout(fadeTimer);clearInterval(fadeTimer);fadeTimer=null;}
 function musicStart(){
   if(!$('mus').checked)return;
-  if(!music){music=new Audio('audio/peaceful-garden.mp3');music.loop=true;music.preload='auto';music.volume=.7;}
+  cancelFade();
+  if(!music){music=new Audio('audio/peaceful-garden.mp3');music.loop=true;music.preload='auto';}
+  music.volume=MUSIC_VOL;
   music.play().catch(()=>{});
 }
-function musicStop(){if(music)music.pause();}
+function musicStop(){cancelFade();if(music){music.pause();music.volume=MUSIC_VOL;}}
+// After the workout: keep playing for a while, then fade out slowly and rewind
+function musicFadeOut(hold=8000,dur=6000){
+  if(!music||music.paused)return;
+  cancelFade();
+  fadeTimer=setTimeout(()=>{
+    const t0=Date.now();
+    fadeTimer=setInterval(()=>{
+      const k=(Date.now()-t0)/dur;
+      if(k>=1){musicStop();music.currentTime=0;return;}
+      music.volume=MUSIC_VOL*(1-k);
+    },50);
+  },hold);
+}
 function announce(){const st=steps[idx];if(st.type==='hold')beep(1046,.35,1);else if(st.type==='rest')beep(523,.35,1);}
 async function keepAwake(on){
   try{
@@ -246,7 +263,7 @@ function tick(){
   } else if(after!==before&&after<=3&&after>0)beep(660,.1,1);
   render();
 }
-function finish(){running=false;clearInterval(timer);musicStop();finished=true;keepAwake(false);beep(1318,.6,1);render();}
+function finish(){running=false;clearInterval(timer);musicFadeOut();finished=true;keepAwake(false);beep(1318,.6,1);render();}
 function initAudio(){
   // Let beeps mix with music from other apps (Safari / iOS 17+); ignored elsewhere
   try{if(navigator.audioSession)navigator.audioSession.type='ambient';}catch(e){}
@@ -281,7 +298,7 @@ $('back').onclick=()=>jump(-1);
 $('reset').onclick=reset;
 document.addEventListener('keydown',e=>{if(e.code==='Space'&&e.target.tagName!=='BUTTON'&&e.target.tagName!=='INPUT'){e.preventDefault();$('go').click();}});
 try{const s=localStorage.getItem('snd');if(s!==null)$('snd').checked=s==='1';const u=localStorage.getItem('mus');if(u!==null)$('mus').checked=u==='1';}catch(e){}
-$('mus').onchange=e=>{try{localStorage.setItem('mus',e.target.checked?'1':'0')}catch(_){}if(running){e.target.checked?musicStart():musicStop();}};
+$('mus').onchange=e=>{try{localStorage.setItem('mus',e.target.checked?'1':'0')}catch(_){}if(!e.target.checked)musicStop();else if(running)musicStart();};
 $('snd').onchange=e=>{try{localStorage.setItem('snd',e.target.checked?'1':'0')}catch(_){}}
 render();
 </script>
